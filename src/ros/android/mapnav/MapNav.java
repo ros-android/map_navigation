@@ -35,12 +35,13 @@ import android.widget.EditText;
 import android.widget.Toast;
 import android.widget.LinearLayout;
 
-import org.ros.Node;
-import org.ros.Publisher;
-import org.ros.ServiceResponseListener;
-import org.ros.Subscriber;
-import org.ros.exception.RosInitException;
-import org.ros.ServiceClient;
+import org.ros.node.Node;
+import org.ros.node.topic.Publisher;
+import org.ros.node.service.ServiceResponseListener;
+import org.ros.node.topic.Subscriber;
+import org.ros.exception.RosException;
+import org.ros.exception.RemoteException;
+import org.ros.node.service.ServiceClient;
 import org.ros.internal.node.service.ServiceIdentifier;
 import org.ros.message.Message;
 import org.ros.message.app_manager.AppStatus;
@@ -266,7 +267,7 @@ public class MapNav extends RosAppActivity implements OnTouchListener {
       NameResolver appNamespace = getAppNamespace(node);
       cameraView = (SensorImageView) findViewById(R.id.image);
       Log.i("MapNav", "init cameraView");
-      cameraView.start(node, appNamespace.resolve(cameraTopic));
+      cameraView.start(node, appNamespace.resolve(cameraTopic).toString());
       cameraView.post(new Runnable() {
 
         @Override
@@ -275,11 +276,11 @@ public class MapNav extends RosAppActivity implements OnTouchListener {
         }
       });
       Log.i("MapNav", "init twistPub");
-      twistPub = node.createPublisher(baseControlTopic, "geometry_msgs/Twist");
+      twistPub = node.newPublisher(baseControlTopic, "geometry_msgs/Twist");
       createPublisherThread(twistPub, touchCmdMessage, 10);
       poseSetter.start(node);
       goalSender.start(node);
-    } catch (RosInitException e) {
+    } catch (RosException e) {
       Log.e("MapNav", "initRos() caught exception: " + e.toString() + ", message = " + e.getMessage());
     }
   }
@@ -299,7 +300,7 @@ public class MapNav extends RosAppActivity implements OnTouchListener {
         dashboard.start(node);
         mapView.start(node);
         startApp();
-      } catch (RosInitException ex) {
+      } catch (RosException ex) {
         safeToastStatus( "Failed: " + ex.getMessage() );
       }
     } else {
@@ -321,7 +322,7 @@ public class MapNav extends RosAppActivity implements OnTouchListener {
           }
 
           @Override
-          public void onFailure(Exception e) {
+          public void onFailure(RemoteException e) {
             safeToastStatus("Failed: " + e.getMessage());
           }
         });
@@ -368,14 +369,14 @@ public class MapNav extends RosAppActivity implements OnTouchListener {
         @Override public void run() {
           try {
 	    ServiceClient<ListLastMaps.Request, ListLastMaps.Response> listMapsServiceClient =
-              getNode().createServiceClient("list_last_maps", "map_store/ListLastMaps");
+              getNode().newServiceClient("list_last_maps", "map_store/ListLastMaps");
             listMapsServiceClient.call(new ListLastMaps.Request(), new ServiceResponseListener<ListLastMaps.Response>() {
                 @Override public void onSuccess(ListLastMaps.Response message) {
                   Log.i("MapNav", "readAvailableMapList() Success");
                   safeDismissWaitingDialog();
                   showMapListDialog(message.map_list);
                 }
-                @Override public void onFailure(Exception e) {
+                @Override public void onFailure(RemoteException e) {
                   Log.i("MapNav", "readAvailableMapList() Failure");
                   safeToastStatus("Reading map list failed: " + e.getMessage());
                   safeDismissWaitingDialog();
@@ -458,7 +459,7 @@ public class MapNav extends RosAppActivity implements OnTouchListener {
     safeShowWaitingDialog("Loading map");
     try {
       ServiceClient<PublishMap.Request, PublishMap.Response> publishMapServiceClient =
-        getNode().createServiceClient("publish_map", "map_store/PublishMap");
+        getNode().newServiceClient("publish_map", "map_store/PublishMap");
       PublishMap.Request req = new PublishMap.Request();
       req.map_id = mapListEntry.map_id;
       publishMapServiceClient.call(req, new ServiceResponseListener<PublishMap.Response>() {
@@ -467,7 +468,7 @@ public class MapNav extends RosAppActivity implements OnTouchListener {
             safeDismissWaitingDialog();
             poseSetter.enable();
           }
-          @Override public void onFailure(Exception e) {
+          @Override public void onFailure(RemoteException e) {
             Log.i("MapNav", "loadMap() Failure");
             safeToastStatus("Loading map failed: " + e.getMessage());
             safeDismissWaitingDialog();
