@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<project basedir="." default="compile" name="map_nav">
+  
+  <property file="ros.properties"/>
+  <import file="${ros.pkg.appmanandroid.dir}/build_app.xml" />
+</project>
