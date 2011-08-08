@@ -34,6 +34,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 import android.widget.LinearLayout;
+import android.graphics.Color;
 
 import org.ros.node.Node;
 import org.ros.node.topic.Publisher;
@@ -57,6 +58,7 @@ import ros.android.activity.RosAppActivity;
 import ros.android.views.SensorImageView;
 import ros.android.views.SetInitialPoseDisplay;
 import ros.android.views.SendGoalDisplay;
+import ros.android.views.PathDisplay;
 import ros.android.util.Dashboard;
 import ros.android.views.MapView;
 
@@ -85,6 +87,7 @@ public class MapNav extends RosAppActivity implements OnTouchListener {
   private String cameraTopic;
   private SetInitialPoseDisplay poseSetter;
   private SendGoalDisplay goalSender;
+  private PathDisplay pathDisplay;
 
   private enum ViewMode {
     CAMERA, MAP
@@ -173,6 +176,11 @@ public class MapNav extends RosAppActivity implements OnTouchListener {
     goalSender.disable();
     mapView.addDisplay( goalSender );
     mapView.getPoser().addPosable( "/map", "/base_footprint", goalSender );
+
+    pathDisplay = new PathDisplay();
+    mapView.addDisplay( pathDisplay );
+    pathDisplay.setColor(Color.rgb(0, 255, 0));
+    //mapView.getPoser().addPosable( "/map", "/map", pathDisplay );
   }
 
   /**
