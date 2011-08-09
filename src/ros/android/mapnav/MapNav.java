@@ -179,6 +179,9 @@ public class MapNav extends RosAppActivity implements OnTouchListener {
 
     pathDisplay = new PathDisplay();
     mapView.addDisplay( pathDisplay );
+    if (getIntent().hasExtra("path_topic")) {
+      pathDisplay.setTopic(getIntent().getStringExtra("path_topic"));
+    }
     pathDisplay.setColor(Color.rgb(0, 255, 0));
     //mapView.getPoser().addPosable( "/map", "/map", pathDisplay );
   }
@@ -348,10 +351,12 @@ public class MapNav extends RosAppActivity implements OnTouchListener {
 
   private void setPose() {
     poseSetter.enable();
+    goalSender.disable();
   }
 
   private void setGoal() {
     goalSender.enable();
+    poseSetter.disable();
   }
 
   private void readAvailableMapList() {
