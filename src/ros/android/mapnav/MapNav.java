@@ -61,6 +61,7 @@ import ros.android.views.SendGoalDisplay;
 import ros.android.views.PathDisplay;
 import ros.android.util.Dashboard;
 import ros.android.views.MapView;
+import ros.android.views.MapDisplay;
 
 import java.text.DateFormat;
 import java.util.ArrayList;
@@ -70,7 +71,7 @@ import java.util.Date;
  * @author kwc@willowgarage.com (Ken Conley)
  * @author hersh@willowgarage.com (Dave Hershberger)
  */
-public class MapNav extends RosAppActivity implements OnTouchListener {
+public class MapNav extends RosAppActivity implements OnTouchListener, MapDisplay.MapDisplayStateCallback {
   private Publisher<Twist> twistPub;
   private SensorImageView cameraView;
   private MapView mapView;
@@ -88,6 +89,7 @@ public class MapNav extends RosAppActivity implements OnTouchListener {
   private SetInitialPoseDisplay poseSetter;
   private SendGoalDisplay goalSender;
   private PathDisplay pathDisplay;
+  private ProgressDialog progress;
 
   private enum ViewMode {
     CAMERA, MAP
@@ -98,6 +100,47 @@ public class MapNav extends RosAppActivity implements OnTouchListener {
 
   private ProgressDialog waitingDialog;
   private AlertDialog chooseMapDialog;
+  
+  @Override
+  public void onMapDisplayState(final MapDisplay.State state) {
+    Log.i("MapNav", "State callback: " + state);
+    runOnUiThread(new Runnable() {
+        public void run() {
+          Log.i("MapNav", "State: " + state);
+          if (MapNav.this.progress != null) {
+            MapNav.this.progress.dismiss();
+            MapNav.this.progress = null;
+          }
+          
+          if (state == MapDisplay.State.STATE_STARTING) {
+            //Create spinning progress dialog
+            MapNav.this.progress = ProgressDialog.show(MapNav.this, "Loading...", "Waiting for map from robot...", true, false);
+            MapNav.this.progress.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+          } else if (state == MapDisplay.State.STATE_LOADING) {
+            //Create spinning progress dialog
+            MapNav.this.progress = ProgressDialog.show(MapNav.this, "Loading map...", "Displaying map...", true, false);
+            MapNav.this.progress.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+          } else if (state == MapDisplay.State.STATE_NEED_MAP) {
+            //Need map
+            MapNav.this.progress = ProgressDialog.show(MapNav.this, "Waiting for map selection...", "Waiting for the map selection service...", true, false);
+            MapNav.this.progress.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+            new Thread(new Runnable() {
+                @Override public void run() {
+                  if (MapNav.this.waitForService(20)) {
+                    MapNav.this.readAvailableMapList();
+                  } else {
+                    //Show alert
+                  }
+                }}).start();
+          } else if (state == MapDisplay.State.STATE_WORKING) {
+            //Closed dialog - do nothing
+          } else {
+            Log.e("MapNav", "Invalid state: " + state);
+          }
+          Log.i("MapNav", "Done State: " + state);
+        }});
+  }
+
 
   /** Called when the activity is first created. */
   @Override
@@ -146,6 +189,7 @@ public class MapNav extends RosAppActivity implements OnTouchListener {
     if (getIntent().hasExtra("base_scan_frame")) {
       mapView.setBaseScanFrame(getIntent().getStringExtra("base_scan_frame"));
     }
+    mapView.addMapDisplayCallback(this);
 
     mainLayout = (ViewGroup) findViewById(R.id.main_layout);
     sideLayout = (ViewGroup) findViewById(R.id.side_layout);
@@ -357,6 +401,26 @@ public class MapNav extends RosAppActivity implements OnTouchListener {
   private void setGoal() {
     goalSender.enable();
     poseSetter.disable();
+  }
+
+  private boolean waitForService(int n) {
+    int i = 0;
+    while (i < n) {
+      try {
+        ServiceClient<ListLastMaps.Request, ListLastMaps.Response> listMapsServiceClient =
+          getNode().newServiceClient("list_last_maps", "map_store/ListLastMaps");
+        return true;
+      } catch (Throwable ex) {
+        //Do nothing.
+        try {
+          Thread.sleep(1000L);
+        } catch(java.lang.InterruptedException iex) {
+          return false;
+        }
+      }
+      i++;
+    }
+    return false;
   }
 
   private void readAvailableMapList() {
