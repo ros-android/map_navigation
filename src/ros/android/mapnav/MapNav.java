@@ -107,10 +107,8 @@ public class MapNav extends RosAppActivity implements OnTouchListener, MapDispla
   
   @Override
   public void onMapDisplayState(final MapDisplay.State state) {
-    Log.i("MapNav", "State callback: " + state);
     runOnUiThread(new Runnable() {
         public void run() {
-          Log.i("MapNav", "State: " + state);
           if (MapNav.this.progress != null) {
             MapNav.this.progress.dismiss();
             MapNav.this.progress = null;
@@ -141,7 +139,6 @@ public class MapNav extends RosAppActivity implements OnTouchListener, MapDispla
           } else {
             Log.e("MapNav", "Invalid state: " + state);
           }
-          Log.i("MapNav", "Done State: " + state);
         }});
   }
 
