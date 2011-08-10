@@ -22,6 +22,20 @@
                                android:layout_height="fill_parent"
                                android:layout_weight=".25"
                                android:id="@+id/map_view"/>
+    <RadioGroup android:layout_width="fill_parent"
+		android:layout_height="wrap_content"
+		android:orientation="vertical">
+      <RadioButton android:layout_width="fill_parent" 
+		   android:layout_height="wrap_content" 
+		   android:text="Set Pose"
+		   android:onClick="setPoseClicked"
+		   android:id="@+id/set_pose_button"/>
+      <RadioButton android:layout_width="fill_parent" 
+		   android:layout_height="wrap_content" 
+		   android:text="Set Goal"
+		   android:onClick="setGoalClicked"
+		   android:id="@+id/set_goal_button"/>
+    </RadioGroup>
     <ImageView android:layout_width="fill_parent"
                android:layout_height="fill_parent"
                android:layout_weight=".25"

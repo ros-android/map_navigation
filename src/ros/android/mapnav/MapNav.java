@@ -34,6 +34,8 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 import android.widget.LinearLayout;
+import android.widget.Button;
+import android.widget.RadioButton;
 import android.graphics.Color;
 
 import org.ros.node.Node;
@@ -90,6 +92,8 @@ public class MapNav extends RosAppActivity implements OnTouchListener, MapDispla
   private SendGoalDisplay goalSender;
   private PathDisplay pathDisplay;
   private ProgressDialog progress;
+  private RadioButton goalButton;
+  private RadioButton poseButton;
 
   private enum ViewMode {
     CAMERA, MAP
@@ -228,6 +232,19 @@ public class MapNav extends RosAppActivity implements OnTouchListener, MapDispla
     }
     pathDisplay.setColor(Color.rgb(0, 255, 0));
     //mapView.getPoser().addPosable( "/map", "/map", pathDisplay );
+    
+    goalButton = (RadioButton) findViewById(R.id.set_goal_button);
+    poseButton = (RadioButton) findViewById(R.id.set_pose_button);
+    poseButton.toggle();
+    setPose();
+  }
+
+  public void setPoseClicked(View view) {
+    setPose();
+  }
+
+  public void setGoalClicked(View view) {
+    setGoal();
   }
 
   /**
