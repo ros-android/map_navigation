@@ -36,6 +36,11 @@
 		   android:onClick="setGoalClicked"
 		   android:id="@+id/set_goal_button"/>
     </RadioGroup>
+    <Button android:layout_width="fill_parent" 
+	    android:layout_height="wrap_content" 
+	    android:text="Place Position"
+	    android:onClick="placePosition"
+	    android:id="@+id/place_button"/>
     <ImageView android:layout_width="fill_parent"
                android:layout_height="fill_parent"
                android:layout_weight=".25"

@@ -101,6 +101,7 @@ public class MapNav extends RosAppActivity implements OnTouchListener, MapDispla
 
   private ViewMode viewMode;
   private boolean deadman;
+  private boolean poseSet;
 
   private ProgressDialog waitingDialog;
   private AlertDialog chooseMapDialog;
@@ -242,6 +243,14 @@ public class MapNav extends RosAppActivity implements OnTouchListener, MapDispla
 
   public void setGoalClicked(View view) {
     setGoal();
+  }
+
+  public void placePosition(View view) {
+    if (poseSet) {
+      poseSetter.placeOnClick();
+    } else {
+      goalSender.placeOnClick();
+    }
   }
 
   /**
@@ -410,11 +419,13 @@ public class MapNav extends RosAppActivity implements OnTouchListener, MapDispla
   private void setPose() {
     poseSetter.enable();
     goalSender.disable();
+    poseSet = true;
   }
 
   private void setGoal() {
     goalSender.enable();
     poseSetter.disable();
+    poseSet = false;
   }
 
   private boolean waitForService(int n) {
