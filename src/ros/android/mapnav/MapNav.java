@@ -61,7 +61,6 @@ import ros.android.views.SensorImageView;
 import ros.android.views.SetInitialPoseDisplay;
 import ros.android.views.SendGoalDisplay;
 import ros.android.views.PathDisplay;
-import ros.android.util.Dashboard;
 import ros.android.views.MapView;
 import ros.android.views.MapDisplay;
 
@@ -82,7 +81,6 @@ public class MapNav extends RosAppActivity implements OnTouchListener, MapDispla
   private float motionY;
   private float motionX;
   private Subscriber<AppStatus> statusSub;
-  private Dashboard dashboard;
   private ViewGroup mainLayout;
   private ViewGroup sideLayout;
   private String robotAppName;
@@ -147,40 +145,25 @@ public class MapNav extends RosAppActivity implements OnTouchListener, MapDispla
   /** Called when the activity is first created. */
   @Override
   public void onCreate(Bundle savedInstanceState) {
+    setDefaultAppName("turtlebot_teleop/android_map_nav");
+    setDashboardResource(R.id.top_bar);
+    setMainWindowResource(R.layout.main);
     super.onCreate(savedInstanceState);
-    requestWindowFeature(Window.FEATURE_NO_TITLE);
-    getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
-        WindowManager.LayoutParams.FLAG_FULLSCREEN);
-    setContentView(R.layout.main);
-
-    robotAppName = getIntent().getStringExtra(AppManager.PACKAGE + ".robot_app_name");
-    if( robotAppName == null ) {
-      robotAppName = "turtlebot_teleop/android_map_nav";
-    }
-
     View joyView = findViewById(R.id.joystick);
     joyView.setOnTouchListener(this);
-
     cameraView = (SensorImageView) findViewById(R.id.image);
     // cameraView.setOnTouchListener(this);
     touchCmdMessage = new Twist();
-
     if (getIntent().hasExtra("base_control_topic")) {
       baseControlTopic = getIntent().getStringExtra("base_control_topic");
     } else {
       baseControlTopic = "turtlebot_node/cmd_vel";
     }
-
     if (getIntent().hasExtra("camera_topic")) {
       cameraTopic = getIntent().getStringExtra("camera_topic");
     } else {
       cameraTopic = "camera/rgb/image_color/compressed_throttle";
     }
-    
-    dashboard = new Dashboard(this);
-    dashboard.setView((LinearLayout)findViewById(R.id.top_bar),
-                      new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, 
-                                                    LinearLayout.LayoutParams.WRAP_CONTENT));
     mapView = (MapView) findViewById(R.id.map_view);
     if (getIntent().hasExtra("footprint_param")) {
       mapView.setFootprintParam(getIntent().getStringExtra("footprint_param"));
@@ -192,12 +175,12 @@ public class MapNav extends RosAppActivity implements OnTouchListener, MapDispla
       mapView.setBaseScanFrame(getIntent().getStringExtra("base_scan_frame"));
     }
     mapView.addMapDisplayCallback(this);
-
+    
     mainLayout = (ViewGroup) findViewById(R.id.main_layout);
     sideLayout = (ViewGroup) findViewById(R.id.side_layout);
-
+    
     viewMode = ViewMode.CAMERA;
-
+    
     mapView.setOnClickListener(new View.OnClickListener() {
       @Override
       public void onClick(View v) {
@@ -310,7 +293,6 @@ public class MapNav extends RosAppActivity implements OnTouchListener, MapDispla
       pubThread.interrupt();
       pubThread = null;
     }
-    dashboard.stop();
     mapView.stop();
     poseSetter.stop();
     goalSender.stop();
@@ -350,9 +332,7 @@ public class MapNav extends RosAppActivity implements OnTouchListener, MapDispla
     super.onNodeCreate(node);
     if( appManager != null ) {
       try {
-        dashboard.start(node);
         mapView.start(node);
-        startApp();
         NameResolver appNamespace = getAppNamespace(node);
         cameraView = (SensorImageView) findViewById(R.id.image);
         Log.i("MapNav", "init cameraView");
@@ -373,20 +353,6 @@ public class MapNav extends RosAppActivity implements OnTouchListener, MapDispla
     } else {
       safeToastStatus( "App Manager failed to start." );
     }
-  }
-
-  private void startApp() {
-    appManager.startApp(robotAppName,
-        new ServiceResponseListener<StartApp.Response>() {
-          @Override
-          public void onSuccess(StartApp.Response message) {
-          }
-
-          @Override
-          public void onFailure(RemoteException e) {
-            safeToastStatus("Failed: " + e.getMessage());
-          }
-        });
   }
 
   @Override
@@ -564,15 +530,6 @@ public class MapNav extends RosAppActivity implements OnTouchListener, MapDispla
       safeToastStatus("Publishing map couldn't even start: " + ex.getMessage());
       safeDismissWaitingDialog();
     }
-  }
-
-  private void safeToastStatus(final String message) {
-    runOnUiThread(new Runnable() {
-      @Override
-      public void run() {
-        Toast.makeText(MapNav.this, message, Toast.LENGTH_SHORT).show();
-      }
-    });
   }
 
   private void safeDismissChooseMapDialog() {
