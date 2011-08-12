@@ -128,9 +128,21 @@ public class MapNav extends RosAppActivity implements OnTouchListener, MapDispla
             new Thread(new Runnable() {
                 @Override public void run() {
                   if (MapNav.this.waitForService(20)) {
+                    if (MapNav.this.progress != null) {
+                      MapNav.this.progress.dismiss();
+                      MapNav.this.progress = null;
+                    }
                     MapNav.this.readAvailableMapList();
                   } else {
-                    //Show alert
+                    Log.e("MapNav", "Failed to get the map service");
+                    runOnUiThread(new Runnable() {
+                        public void run() {
+                          if (MapNav.this.progress != null) {
+                            MapNav.this.progress.dismiss();
+                            MapNav.this.progress = null;
+                          }
+                          android.os.Process.killProcess(android.os.Process.myPid());
+                        }});
                   }
                 }}).start();
           } else if (state == MapDisplay.State.STATE_WORKING) {
@@ -402,6 +414,7 @@ public class MapNav extends RosAppActivity implements OnTouchListener, MapDispla
           getNode().newServiceClient("list_last_maps", "map_store/ListLastMaps");
         return true;
       } catch (Throwable ex) {
+        Log.i("MapNav", "Wait again for map list");
         //Do nothing.
         try {
           Thread.sleep(1000L);
