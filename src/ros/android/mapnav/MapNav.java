@@ -20,42 +20,26 @@ import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.KeyEvent;
+import android.view.View;
+import android.view.ViewGroup;
 import android.view.Menu;
+import android.widget.Toast;
 import android.view.MenuInflater;
 import android.view.MenuItem;
-import android.view.MotionEvent;
-import android.view.View;
-import android.view.View.OnTouchListener;
-import android.view.ViewGroup;
-import android.view.Window;
-import android.view.WindowManager;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.Toast;
-import android.widget.LinearLayout;
 import android.widget.Button;
 import android.widget.RadioButton;
 import android.graphics.Color;
 
 import org.ros.node.Node;
-import org.ros.node.topic.Publisher;
 import org.ros.node.service.ServiceResponseListener;
-import org.ros.node.topic.Subscriber;
 import org.ros.exception.RosException;
 import org.ros.exception.RemoteException;
 import org.ros.node.service.ServiceClient;
-import org.ros.internal.node.service.ServiceIdentifier;
-import org.ros.message.Message;
-import org.ros.message.app_manager.AppStatus;
-import org.ros.message.geometry_msgs.Twist;
 import org.ros.message.map_store.MapListEntry;
 import org.ros.namespace.NameResolver;
-import org.ros.service.app_manager.StartApp;
 import org.ros.service.map_store.ListLastMaps;
 import org.ros.service.map_store.PublishMap;
 
-import ros.android.activity.AppManager;
 import ros.android.activity.RosAppActivity;
 import ros.android.views.SensorImageView;
 import ros.android.views.SetInitialPoseDisplay;
@@ -63,6 +47,7 @@ import ros.android.views.SendGoalDisplay;
 import ros.android.views.PathDisplay;
 import ros.android.views.MapView;
 import ros.android.views.MapDisplay;
+import ros.android.views.JoystickView;
 
 import java.text.DateFormat;
 import java.util.ArrayList;
@@ -72,19 +57,13 @@ import java.util.Date;
  * @author kwc@willowgarage.com (Ken Conley)
  * @author hersh@willowgarage.com (Dave Hershberger)
  */
-public class MapNav extends RosAppActivity implements OnTouchListener, MapDisplay.MapDisplayStateCallback {
-  private Publisher<Twist> twistPub;
+public class MapNav extends RosAppActivity implements MapDisplay.MapDisplayStateCallback {
   private SensorImageView cameraView;
   private MapView mapView;
-  private Thread pubThread;
-  private Twist touchCmdMessage;
-  private float motionY;
-  private float motionX;
-  private Subscriber<AppStatus> statusSub;
+  private JoystickView joystickView;
   private ViewGroup mainLayout;
   private ViewGroup sideLayout;
   private String robotAppName;
-  private String baseControlTopic;
   private String cameraTopic;
   private SetInitialPoseDisplay poseSetter;
   private SendGoalDisplay goalSender;
@@ -161,15 +140,11 @@ public class MapNav extends RosAppActivity implements OnTouchListener, MapDispla
     setDashboardResource(R.id.top_bar);
     setMainWindowResource(R.layout.main);
     super.onCreate(savedInstanceState);
-    View joyView = findViewById(R.id.joystick);
-    joyView.setOnTouchListener(this);
+    joystickView = (JoystickView)findViewById(R.id.joystick);
     cameraView = (SensorImageView) findViewById(R.id.image);
     // cameraView.setOnTouchListener(this);
-    touchCmdMessage = new Twist();
     if (getIntent().hasExtra("base_control_topic")) {
-      baseControlTopic = getIntent().getStringExtra("base_control_topic");
-    } else {
-      baseControlTopic = "turtlebot_node/cmd_vel";
+      joystickView.setBaseControlTopic(getIntent().getStringExtra("base_control_topic"));
     }
     if (getIntent().hasExtra("camera_topic")) {
       cameraTopic = getIntent().getStringExtra("camera_topic");
@@ -289,47 +264,18 @@ public class MapNav extends RosAppActivity implements OnTouchListener, MapDispla
   @Override
   protected void onNodeDestroy(Node node) {
     deadman = false;
-    if (twistPub != null) {
-      twistPub.shutdown();
-      twistPub = null;
-    }
     if (cameraView != null) {
       cameraView.stop();
       cameraView = null;
     }
-    if (statusSub != null) {
-      statusSub.shutdown();
-      statusSub = null;
-    }
-    if (pubThread != null) {
-      pubThread.interrupt();
-      pubThread = null;
+    if (joystickView != null) {
+      joystickView.stop();
+      joystickView = null;
     }
     mapView.stop();
     poseSetter.stop();
     goalSender.stop();
     super.onNodeDestroy(node);
-  }
-
-  private <T extends Message> void createPublisherThread(final Publisher<T> pub, final T message,
-      final int rate) {
-    pubThread = new Thread(new Runnable() {
-
-      @Override
-      public void run() {
-        try {
-          while (true) {
-            if( deadman ) {
-              pub.publish(message);
-            }
-            Thread.sleep(1000 / rate);
-          }
-        } catch (InterruptedException e) {
-        }
-      }
-    });
-    Log.i("MapNav", "started pub thread");
-    pubThread.start();
   }
 
   @Override
@@ -355,8 +301,7 @@ public class MapNav extends RosAppActivity implements OnTouchListener, MapDispla
               cameraView.setSelected(true);
             }});
         Log.i("MapNav", "init twistPub");
-        twistPub = node.newPublisher(baseControlTopic, "geometry_msgs/Twist");
-        createPublisherThread(twistPub, touchCmdMessage, 10);
+        joystickView.start(node);
         poseSetter.start(node);
         goalSender.start(node);
       } catch (RosException ex) {
@@ -488,34 +433,6 @@ public class MapNav extends RosAppActivity implements OnTouchListener, MapDispla
           chooseMapDialog.show();
         }
       });
-  }
-
-  @Override
-  public boolean onTouch(View arg0, MotionEvent motionEvent) {
-    int action = motionEvent.getAction();
-    if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_MOVE) {
-      deadman = true;
-
-      motionX = (motionEvent.getX() - (arg0.getWidth() / 2)) / (arg0.getWidth());
-      motionY = (motionEvent.getY() - (arg0.getHeight() / 2)) / (arg0.getHeight());
-
-      touchCmdMessage.linear.x = -2 * motionY;
-      touchCmdMessage.linear.y = 0;
-      touchCmdMessage.linear.z = 0;
-      touchCmdMessage.angular.x = 0;
-      touchCmdMessage.angular.y = 0;
-      touchCmdMessage.angular.z = -5 * motionX;
-
-    } else {
-      deadman = false;
-      touchCmdMessage.linear.x = 0;
-      touchCmdMessage.linear.y = 0;
-      touchCmdMessage.linear.z = 0;
-      touchCmdMessage.angular.x = 0;
-      touchCmdMessage.angular.y = 0;
-      touchCmdMessage.angular.z = 0;
-    }
-    return true;
   }
 
   private void loadMap( MapListEntry mapListEntry ) {
