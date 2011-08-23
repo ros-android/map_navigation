@@ -455,6 +455,7 @@ public class MapNav extends RosAppActivity implements MapDisplay.MapDisplayState
             safeDismissWaitingDialog();
           }
         });
+      mapView.resetMapDisplayState();
     } catch(Throwable ex) {
       Log.e("MapNav", "loadMap() caught exception.", ex);
       safeToastStatus("Publishing map couldn't even start: " + ex.getMessage());
