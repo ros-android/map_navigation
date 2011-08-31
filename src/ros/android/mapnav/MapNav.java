@@ -443,6 +443,7 @@ public class MapNav extends RosAppActivity implements MapDisplay.MapDisplayState
         getNode().newServiceClient("publish_map", "map_store/PublishMap");
       PublishMap.Request req = new PublishMap.Request();
       req.map_id = mapListEntry.map_id;
+      mapView.resetMapDisplayState();
       publishMapServiceClient.call(req, new ServiceResponseListener<PublishMap.Response>() {
           @Override public void onSuccess(PublishMap.Response message) {
             Log.i("MapNav", "loadMap() Success");
@@ -455,7 +456,6 @@ public class MapNav extends RosAppActivity implements MapDisplay.MapDisplayState
             safeDismissWaitingDialog();
           }
         });
-      mapView.resetMapDisplayState();
     } catch(Throwable ex) {
       Log.e("MapNav", "loadMap() caught exception.", ex);
       safeToastStatus("Publishing map couldn't even start: " + ex.getMessage());
