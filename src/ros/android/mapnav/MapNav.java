@@ -68,7 +68,6 @@ public class MapNav extends RosAppActivity implements MapDisplay.MapDisplayState
   private SetInitialPoseDisplay poseSetter;
   private SendGoalDisplay goalSender;
   private PathDisplay pathDisplay;
-  private ProgressDialog progress;
   private RadioButton goalButton;
   private RadioButton poseButton;
 
@@ -87,39 +86,27 @@ public class MapNav extends RosAppActivity implements MapDisplay.MapDisplayState
   public void onMapDisplayState(final MapDisplay.State state) {
     runOnUiThread(new Runnable() {
         public void run() {
-          if (MapNav.this.progress != null) {
-            MapNav.this.progress.dismiss();
-            MapNav.this.progress = null;
-          }
+          dismissWaitingDialog();
           
           if (state == MapDisplay.State.STATE_STARTING) {
             //Create spinning progress dialog
-            MapNav.this.progress = ProgressDialog.show(MapNav.this, "Loading...", "Waiting for map from robot...", true, false);
-            MapNav.this.progress.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+            showWaitingDialog("Loading...", "Waiting for map from robot...");
           } else if (state == MapDisplay.State.STATE_LOADING) {
             //Create spinning progress dialog
-            MapNav.this.progress = ProgressDialog.show(MapNav.this, "Loading map...", "Displaying map...", true, false);
-            MapNav.this.progress.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+            showWaitingDialog("Loading map...", "Displaying map...");
           } else if (state == MapDisplay.State.STATE_NEED_MAP) {
             //Need map
-            MapNav.this.progress = ProgressDialog.show(MapNav.this, "Waiting for map selection...", "Waiting for the map selection service...", true, false);
-            MapNav.this.progress.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+            showWaitingDialog("Waiting for map selection...", "Waiting for the map selection service...");
             new Thread(new Runnable() {
                 @Override public void run() {
                   if (MapNav.this.waitForService(20)) {
-                    if (MapNav.this.progress != null) {
-                      MapNav.this.progress.dismiss();
-                      MapNav.this.progress = null;
-                    }
+                    dismissWaitingDialog();
                     MapNav.this.readAvailableMapList();
                   } else {
                     Log.e("MapNav", "Failed to get the map service");
                     runOnUiThread(new Runnable() {
                         public void run() {
-                          if (MapNav.this.progress != null) {
-                            MapNav.this.progress.dismiss();
-                            MapNav.this.progress = null;
-                          }
+                          dismissWaitingDialog();
                           android.os.Process.killProcess(android.os.Process.myPid());
                         }});
                   }
@@ -373,7 +360,7 @@ public class MapNav extends RosAppActivity implements MapDisplay.MapDisplayState
   }
 
   private void readAvailableMapList() {
-    safeShowWaitingDialog("Waiting for map list");
+    safeShowWaitingDialog("Waiting...", "Waiting for map list");
     Thread mapLoaderThread = new Thread(new Runnable() {
         @Override public void run() {
           try {
@@ -437,7 +424,7 @@ public class MapNav extends RosAppActivity implements MapDisplay.MapDisplayState
 
   private void loadMap( MapListEntry mapListEntry ) {
     Log.i("MapNav", "loadMap(): " + mapListEntry.name);
-    safeShowWaitingDialog("Loading map");
+    safeShowWaitingDialog("Waiting...", "Loading map");
     try {
       ServiceClient<PublishMap.Request, PublishMap.Response> publishMapServiceClient =
         getNode().newServiceClient("publish_map", "map_store/PublishMap");
@@ -474,10 +461,23 @@ public class MapNav extends RosAppActivity implements MapDisplay.MapDisplayState
       });
   }
 
-  private void safeShowWaitingDialog(final CharSequence message) {
+  private void showWaitingDialog(final CharSequence title, final CharSequence message) {
+    dismissWaitingDialog();
+    waitingDialog = ProgressDialog.show(MapNav.this, title, message, true);
+    waitingDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+  }
+
+  private void dismissWaitingDialog() {
+    if( waitingDialog != null ) {
+      waitingDialog.dismiss();
+      waitingDialog = null;
+    }
+  }
+
+  private void safeShowWaitingDialog(final CharSequence title, final CharSequence message) {
     runOnUiThread(new Runnable() {
         @Override public void run() {
-          waitingDialog = ProgressDialog.show(MapNav.this, "", message, true);
+          showWaitingDialog(title, message);
         }
       });
   }
@@ -485,10 +485,7 @@ public class MapNav extends RosAppActivity implements MapDisplay.MapDisplayState
   private void safeDismissWaitingDialog() {
     runOnUiThread(new Runnable() {
         @Override public void run() {
-          if( waitingDialog != null ) {
-            waitingDialog.dismiss();
-            waitingDialog = null;
-          }
+          dismissWaitingDialog();
         }
       });
   }
