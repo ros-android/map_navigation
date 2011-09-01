@@ -276,6 +276,7 @@ public class MapNav extends RosAppActivity implements MapDisplay.MapDisplayState
     Log.i("MapNav", "startAppFuture");
     super.onNodeCreate(node);
     if( appManager != null ) {
+      goalSender.setNodeConfiguration(getNodeConfiguration()); //Really a hack, wish we got rid of this paridgm
       try {
         mapView.start(node);
         NameResolver appNamespace = getAppNamespace(node);
