@@ -37,7 +37,7 @@ import org.ros.exception.RemoteException;
 import org.ros.node.service.ServiceClient;
 import org.ros.message.map_store.MapListEntry;
 import org.ros.namespace.NameResolver;
-import org.ros.service.map_store.ListLastMaps;
+import org.ros.service.map_store.ListMaps;
 import org.ros.service.map_store.PublishMap;
 
 import ros.android.activity.RosAppActivity;
@@ -343,8 +343,8 @@ public class MapNav extends RosAppActivity implements MapDisplay.MapDisplayState
     int i = 0;
     while (i < n) {
       try {
-        ServiceClient<ListLastMaps.Request, ListLastMaps.Response> listMapsServiceClient =
-          getNode().newServiceClient("list_last_maps", "map_store/ListLastMaps");
+        ServiceClient<ListMaps.Request, ListMaps.Response> listMapsServiceClient =
+          getNode().newServiceClient("list_maps", "map_store/ListMaps");
         return true;
       } catch (Throwable ex) {
         Log.i("MapNav", "Wait again for map list");
@@ -365,10 +365,10 @@ public class MapNav extends RosAppActivity implements MapDisplay.MapDisplayState
     Thread mapLoaderThread = new Thread(new Runnable() {
         @Override public void run() {
           try {
-	    ServiceClient<ListLastMaps.Request, ListLastMaps.Response> listMapsServiceClient =
-              getNode().newServiceClient("list_last_maps", "map_store/ListLastMaps");
-            listMapsServiceClient.call(new ListLastMaps.Request(), new ServiceResponseListener<ListLastMaps.Response>() {
-                @Override public void onSuccess(ListLastMaps.Response message) {
+	    ServiceClient<ListMaps.Request, ListMaps.Response> listMapsServiceClient =
+              getNode().newServiceClient("list_maps", "map_store/ListMaps");
+            listMapsServiceClient.call(new ListMaps.Request(), new ServiceResponseListener<ListMaps.Response>() {
+                @Override public void onSuccess(ListMaps.Response message) {
                   Log.i("MapNav", "readAvailableMapList() Success");
                   safeDismissWaitingDialog();
                   showMapListDialog(message.map_list);
